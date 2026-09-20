@@ -1,0 +1,6 @@
+{
+  "name": "MoneyPrinterTurbo",
+  "description": "One-stop AI short video generator that automatically produces video copy, footage, subtitles, and background music from a single topic or keyword.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
