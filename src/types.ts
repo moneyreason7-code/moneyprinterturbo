@@ -1,6 +1,7 @@
 export interface TaskVideoRequest {
   video_subject: string;
   video_script?: string;
+  video_script_prompt?: string;
   video_terms?: string[];
   video_language?: string;
   video_aspect?: '9:16' | '16:9' | '1:1';

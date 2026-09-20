@@ -47,15 +47,15 @@ export const Header: React.FC<HeaderProps> = ({ locale, setLocale, activeTaskCou
 
           <div className="flex items-center rounded-lg bg-neutral-100 p-0.5 border border-neutral-200">
             <button
-              id="lang-zh-btn"
-              onClick={() => setLocale('zh')}
+              id="lang-id-btn"
+              onClick={() => setLocale('id')}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
-                locale === 'zh'
+                locale === 'id'
                   ? 'bg-white text-neutral-900 shadow-xs'
                   : 'text-neutral-600 hover:text-neutral-900'
               }`}
             >
-              简体中文
+              Indonesia
             </button>
             <button
               id="lang-en-btn"
@@ -67,6 +67,17 @@ export const Header: React.FC<HeaderProps> = ({ locale, setLocale, activeTaskCou
               }`}
             >
               English
+            </button>
+            <button
+              id="lang-zh-btn"
+              onClick={() => setLocale('zh')}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                locale === 'zh'
+                  ? 'bg-white text-neutral-900 shadow-xs'
+                  : 'text-neutral-600 hover:text-neutral-900'
+              }`}
+            >
+              简体中文
             </button>
           </div>
         </div>

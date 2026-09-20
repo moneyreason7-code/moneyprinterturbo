@@ -12,16 +12,18 @@ interface VideoPlayerModalProps {
 export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ locale, task, onClose }) => {
   const t = i18n[locale];
   const scenes = task.scenes || [];
+  const hasStitchedVideo = !!(task.videos && task.videos.length > 0 && task.videos[0]);
+  const [playMode, setPlayMode] = useState<'full' | 'scenes'>(hasStitchedVideo ? 'full' : 'scenes');
   const [currentSceneIdx, setCurrentSceneIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [videoDuration, setVideoDuration] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bgmRef = useRef<HTMLAudioElement | null>(null);
 
-  const totalDuration = scenes.reduce((acc, s) => acc + s.duration, 0);
+  const totalDuration = scenes.reduce((acc, s) => acc + s.duration, 0) || videoDuration || 10;
   const currentScene = scenes[currentSceneIdx] || scenes[0];
 
   const aspect = task.params.video_aspect || '9:16';
@@ -31,31 +33,61 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ locale, task
   const fontSize = task.params.font_size || 22;
   const subPos = task.params.subtitle_position || 'bottom';
 
-  // Synchronize Scene changes
+  // Synchronize video src when mode or scene changes
   useEffect(() => {
-    if (!videoRef.current || !currentScene) return;
-    videoRef.current.src = currentScene.videoUrl;
+    if (!videoRef.current) return;
+    if (playMode === 'full' && task.videos?.[0]) {
+      videoRef.current.src = task.videos[0];
+      videoRef.current.muted = isMuted;
+    } else if (currentScene) {
+      videoRef.current.src = currentScene.videoUrl;
+      videoRef.current.muted = true; // scenes rely on bgmRef
+    }
     videoRef.current.load();
     if (isPlaying) {
       videoRef.current.play().catch(() => {});
+      if (playMode === 'scenes' && bgmRef.current) {
+        bgmRef.current.play().catch(() => {});
+      }
     }
-  }, [currentSceneIdx]);
+  }, [playMode, currentSceneIdx]);
+
+  // Sync mute
+  useEffect(() => {
+    if (videoRef.current) {
+      if (playMode === 'full') {
+        videoRef.current.muted = isMuted;
+      }
+    }
+    if (bgmRef.current) {
+      bgmRef.current.muted = isMuted;
+    }
+  }, [isMuted, playMode]);
 
   // Video Time Update & Scene Advance
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    const sceneElapsed = videoRef.current.currentTime;
-    const sceneBase = scenes.slice(0, currentSceneIdx).reduce((acc, s) => acc + s.duration, 0);
-    setCurrentTime(sceneBase + sceneElapsed);
 
-    // If scene reached its designated duration, jump to next scene
-    if (currentScene && sceneElapsed >= currentScene.duration) {
-      if (currentSceneIdx < scenes.length - 1) {
-        setCurrentSceneIdx((prev) => prev + 1);
-      } else {
-        // Video finished, loop to start
-        setCurrentSceneIdx(0);
-        setCurrentTime(0);
+    if (playMode === 'full') {
+      const cur = videoRef.current.currentTime;
+      setCurrentTime(cur);
+      // Find matching scene for subtitles
+      const matchedIdx = scenes.findIndex((s) => cur >= s.startTime && cur <= s.endTime);
+      if (matchedIdx !== -1 && matchedIdx !== currentSceneIdx) {
+        setCurrentSceneIdx(matchedIdx);
+      }
+    } else {
+      const sceneElapsed = videoRef.current.currentTime;
+      const sceneBase = scenes.slice(0, currentSceneIdx).reduce((acc, s) => acc + s.duration, 0);
+      setCurrentTime(sceneBase + sceneElapsed);
+
+      if (currentScene && sceneElapsed >= currentScene.duration) {
+        if (currentSceneIdx < scenes.length - 1) {
+          setCurrentSceneIdx((prev) => prev + 1);
+        } else {
+          setCurrentSceneIdx(0);
+          setCurrentTime(0);
+        }
       }
     }
   };
@@ -68,7 +100,9 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ locale, task
       setIsPlaying(false);
     } else {
       videoRef.current.play().catch(() => {});
-      bgmRef.current?.play().catch(() => {});
+      if (playMode === 'scenes') {
+        bgmRef.current?.play().catch(() => {});
+      }
       setIsPlaying(true);
     }
   };
@@ -85,7 +119,7 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ locale, task
   };
 
   const handleDownloadVideo = () => {
-    const videoUrl = currentScene?.videoUrl || task.videos?.[0];
+    const videoUrl = task.videos?.[0] || currentScene?.videoUrl;
     if (!videoUrl) return;
     const a = document.createElement('a');
     a.href = videoUrl;
@@ -121,6 +155,29 @@ export const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({ locale, task
           </div>
 
           <div className="flex items-center gap-2">
+            {hasStitchedVideo && (
+              <div className="flex items-center rounded-lg bg-neutral-800 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPlayMode('full')}
+                  className={`rounded-md px-2 py-1 font-medium transition-all ${
+                    playMode === 'full' ? 'bg-indigo-600 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Full MP4
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayMode('scenes')}
+                  className={`rounded-md px-2 py-1 font-medium transition-all ${
+                    playMode === 'scenes' ? 'bg-indigo-600 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Scenes Studio
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handleDownloadSrt}
               className="inline-flex items-center gap-1 rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300 hover:bg-neutral-700 hover:text-white transition-all"

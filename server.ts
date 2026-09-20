@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
@@ -23,18 +24,23 @@ const storageDir = path.join(process.cwd(), 'storage');
 const bgmStorageDir = path.join(storageDir, 'bgm');
 const videoStorageDir = path.join(storageDir, 'local_videos');
 const taskDir = path.join(storageDir, 'tasks');
+const resourceDir = path.join(process.cwd(), 'resource');
+const resourceSongsDir = path.join(resourceDir, 'songs');
+const sampleVideosDir = path.join(resourceDir, 'sample_videos');
+const generatedDir = path.join(resourceDir, 'generated');
 
-[storageDir, bgmStorageDir, videoStorageDir, taskDir].forEach((dir) => {
+[storageDir, bgmStorageDir, videoStorageDir, taskDir, sampleVideosDir, generatedDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 });
 
-// Serve songs statically
-const resourceSongsDir = path.join(process.cwd(), 'resource', 'songs');
+// Serve assets statically
 if (fs.existsSync(resourceSongsDir)) {
   app.use('/songs', express.static(resourceSongsDir));
 }
+app.use('/sample_videos', express.static(sampleVideosDir));
+app.use('/generated', express.static(generatedDir));
 app.use('/storage', express.static(storageDir));
 
 // Multer setup for uploads
@@ -61,55 +67,55 @@ const uploadVideo = multer({ storage: videoStorage, limits: { fileSize: 100 * 10
 // In-memory Task store
 const tasks = new Map<string, TaskRecord>();
 
-// Curated high quality short video clips for dynamic topic matching
+// Curated high quality short video clips for dynamic topic matching (locally hosted, zero 403 errors)
 const CURATED_SAMPLE_VIDEOS = [
   {
-    category: 'tech',
-    keywords: ['ai', 'tech', 'future', 'robot', 'code', 'data', 'computer', 'digital', 'science'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-circuit-board-details-close-up-31804-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-holding-smartphone-with-green-screen-41164-large.mp4'
-  },
-  {
-    category: 'nature',
-    keywords: ['nature', 'forest', 'tree', 'green', 'waterfall', 'river', 'outdoor', 'mountain', 'earth'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-mountain-valley-with-a-river-42994-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-sun-rays-in-a-green-forest-42996-large.mp4'
-  },
-  {
     category: 'space',
-    keywords: ['space', 'universe', 'planet', 'galaxy', 'star', 'astronaut', 'cosmos', 'orbit', 'nasa'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-1610-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-full-moon-in-the-night-sky-4001-large.mp4'
+    keywords: ['space', 'universe', 'planet', 'galaxy', 'star', 'astronaut', 'cosmos', 'orbit', 'nasa', 'angkasa', 'bintang', 'bulan', 'antariksa'],
+    file: '/sample_videos/space.mp4',
+    altFile: '/sample_videos/abstract.mp4'
+  },
+  {
+    category: 'tech',
+    keywords: ['ai', 'tech', 'technology', 'future', 'robot', 'code', 'data', 'computer', 'digital', 'science', 'teknologi', 'komputer', 'internet', 'inovasi'],
+    file: '/sample_videos/tech.mp4',
+    altFile: '/sample_videos/city.mp4'
   },
   {
     category: 'city',
-    keywords: ['city', 'traffic', 'urban', 'street', 'building', 'night', 'skyline', 'people', 'travel'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-city-traffic-at-night-42848-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-skyscrapers-seen-from-below-in-a-business-district-42849-large.mp4'
+    keywords: ['city', 'traffic', 'urban', 'street', 'building', 'night', 'skyline', 'people', 'travel', 'kota', 'jalan', 'gedung', 'malam', 'wisata'],
+    file: '/sample_videos/city.mp4',
+    altFile: '/sample_videos/business.mp4'
+  },
+  {
+    category: 'nature',
+    keywords: ['nature', 'forest', 'tree', 'green', 'waterfall', 'river', 'outdoor', 'mountain', 'earth', 'ocean', 'sea', 'alam', 'hutan', 'laut', 'gunung', 'sungai', 'bumi'],
+    file: '/sample_videos/nature.mp4',
+    altFile: '/sample_videos/space.mp4'
   },
   {
     category: 'business',
-    keywords: ['money', 'finance', 'business', 'work', 'office', 'growth', 'market', 'chart', 'success'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-businessman-typing-on-his-laptop-in-an-office-42777-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-stock-market-ticker-board-42842-large.mp4'
+    keywords: ['money', 'finance', 'business', 'work', 'office', 'growth', 'market', 'chart', 'success', 'uang', 'bisnis', 'kantor', 'ekonomi', 'sukses', 'kerja'],
+    file: '/sample_videos/business.mp4',
+    altFile: '/sample_videos/tech.mp4'
   },
   {
-    category: 'food',
-    keywords: ['food', 'cooking', 'coffee', 'meal', 'delicious', 'eat', 'chef', 'restaurant', 'healthy'],
-    url: 'https://assets.mixkit.co/videos/preview/mixkit-coffee-beans-falling-into-a-grinder-43336-large.mp4',
-    altUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fresh-vegetables-being-washed-in-a-sink-42964-large.mp4'
+    category: 'abstract',
+    keywords: ['abstract', 'art', 'light', 'color', 'neon', 'wave', 'creative', 'motion', 'seni', 'warna', 'kreatif', 'musik'],
+    file: '/sample_videos/abstract.mp4',
+    altFile: '/sample_videos/nature.mp4'
   }
 ];
 
 function getSampleVideoForKeyword(kw: string, index: number): string {
-  const lower = kw.toLowerCase();
+  const lower = (kw || '').toLowerCase();
   for (const item of CURATED_SAMPLE_VIDEOS) {
     if (item.keywords.some((k) => lower.includes(k))) {
-      return index % 2 === 0 ? item.url : item.altUrl;
+      return index % 2 === 0 ? item.file : item.altFile;
     }
   }
   const fallback = CURATED_SAMPLE_VIDEOS[index % CURATED_SAMPLE_VIDEOS.length];
-  return index % 2 === 0 ? fallback.url : fallback.altUrl;
+  return index % 2 === 0 ? fallback.file : fallback.altFile;
 }
 
 // Lazy Gemini AI initialization
@@ -175,8 +181,9 @@ app.post('/api/v1/scripts', async (req, res) => {
 
     const ai = getGeminiClient();
     if (ai) {
-      const langPrompt = video_language === 'en' ? 'English' : video_language === 'zh' ? 'Simplified Chinese' : video_language;
-      const prompt = `You are an elite short-form video copywriter (TikTok, YouTube Shorts, Instagram Reels).
+      try {
+        const langPrompt = video_language === 'en' ? 'English' : video_language === 'zh' ? 'Simplified Chinese' : video_language;
+        const prompt = `You are an elite short-form video copywriter (TikTok, YouTube Shorts, Instagram Reels).
 Task: Write an engaging, high-retention video script about: "${video_subject}".
 Language: ${langPrompt}
 Paragraph count: exactly ${paragraph_number} distinct paragraphs.
@@ -188,20 +195,25 @@ Style guidelines:
 ${video_script_prompt ? `Additional Requirements: ${video_script_prompt}` : ''}
 ${custom_system_prompt ? `System Directive: ${custom_system_prompt}` : ''}`;
 
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
+        const aiResponse = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: prompt,
+        });
 
-      const script = aiResponse.text?.trim() || '';
-      return res.json({
-        code: 200,
-        message: 'success',
-        data: { video_script: script },
-      });
+        const script = aiResponse.text?.trim() || '';
+        if (script) {
+          return res.json({
+            code: 200,
+            message: 'success',
+            data: { video_script: script },
+          });
+        }
+      } catch (geminiError: any) {
+        console.warn('Gemini script generation fallback:', geminiError.message || geminiError);
+      }
     }
 
-    // Fallback script generator if no GEMINI_API_KEY
+    // Fallback script generator if no GEMINI_API_KEY or if API call fails
     const isEn = video_language === 'en';
     const fallbackParagraphs = isEn
       ? [
@@ -238,35 +250,39 @@ app.post('/api/v1/terms', async (req, res) => {
 
     const ai = getGeminiClient();
     if (ai && (video_subject || video_script)) {
-      const prompt = `Extract exactly ${amount} high-quality, visual video search keywords (in English) suitable for searching B-roll stock footage (e.g. on Pexels/Pixabay) for this video topic and script.
+      try {
+        const prompt = `Extract exactly ${amount} high-quality, visual video search keywords (in English) suitable for searching B-roll stock footage (e.g. on Pexels/Pixabay) for this video topic and script.
 Subject: ${video_subject}
 Script snippet: ${video_script.substring(0, 500)}
 
 Return ONLY a valid JSON array of strings, for example: ["cyberpunk city", "artificial intelligence robotic hand", "abstract digital network", "futuristic laboratory", "person typing laptop"]`;
 
-      const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-
-      let terms: string[] = [];
-      try {
-        const cleaned = (aiResponse.text || '').replace(/```json|```/g, '').trim();
-        terms = JSON.parse(cleaned);
-      } catch {
-        terms = (aiResponse.text || '')
-          .split('\n')
-          .map((s) => s.replace(/^\d+[\.\-\s]+/, '').replace(/["'\[\],]/g, '').trim())
-          .filter(Boolean)
-          .slice(0, amount);
-      }
-
-      if (Array.isArray(terms) && terms.length > 0) {
-        return res.json({
-          code: 200,
-          message: 'success',
-          data: { video_terms: terms },
+        const aiResponse = await ai.models.generateContent({
+          model: 'gemini-3.6-flash',
+          contents: prompt,
         });
+
+        let terms: string[] = [];
+        try {
+          const cleaned = (aiResponse.text || '').replace(/```json|```/g, '').trim();
+          terms = JSON.parse(cleaned);
+        } catch {
+          terms = (aiResponse.text || '')
+            .split('\n')
+            .map((s) => s.replace(/^\d+[\.\-\s]+/, '').replace(/["'\[\],]/g, '').trim())
+            .filter(Boolean)
+            .slice(0, amount);
+        }
+
+        if (Array.isArray(terms) && terms.length > 0) {
+          return res.json({
+            code: 200,
+            message: 'success',
+            data: { video_terms: terms },
+          });
+        }
+      } catch (geminiError: any) {
+        console.warn('Gemini terms generation fallback:', geminiError.message || geminiError);
       }
     }
 
@@ -497,15 +513,53 @@ async function startVideoTaskAsync(task: TaskRecord) {
 
     let script = params.video_script?.trim();
     if (!script) {
-      // Generate script
-      const isEn = params.video_language === 'en';
-      script = isEn
-        ? `The rise of ${params.video_subject} marks a pivotal turning point in modern innovation.\n\nFrom groundbreaking breakthroughs to everyday integration, the momentum is rapidly accelerating.\n\nCreators and leaders are harnessing these capabilities to redefine what is possible in record time.\n\nEmbrace the future today, and stay ahead of the next global technological wave.`
-        : `关于“${params.video_subject}”，它正在以超乎想象的速度重塑我们的认知和生活方式。\n\n从核心技术突破到行业深度落地，这股趋势正在带来前所未有的机遇与变革。\n\n越来越多敏锐的创作者和开拓者，已经通过这些方法抢先占领了前沿阵地。\n\n拥抱趋势才能赢得先机，关注我们，带你持续探索更多前沿干货！`;
+      const ai = getGeminiClient();
+      if (ai && params.video_subject) {
+        try {
+          const langPrompt =
+            params.video_language === 'id'
+              ? 'Bahasa Indonesia'
+              : params.video_language === 'en'
+              ? 'English'
+              : params.video_language === 'zh'
+              ? 'Simplified Chinese'
+              : params.video_language || 'English';
+
+          const prompt = `You are an elite short-form video copywriter (TikTok, YouTube Shorts, Instagram Reels).
+Task: Write an engaging, high-retention video script about: "${params.video_subject}".
+Language: ${langPrompt}
+Paragraph count: exactly ${params.paragraph_number || 4} distinct paragraphs.
+Formatting rules:
+- Provide ONLY the spoken narrative lines.
+- Separate each scene paragraph with a double newline.
+- Do NOT include scene directions, timestamps, speaker tags, or labels like [Scene 1].
+- Hook the audience immediately in the very first sentence.
+${params.video_script_prompt ? `Additional Requirements: ${params.video_script_prompt}` : ''}`;
+
+          const aiResponse = await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: prompt,
+          });
+          script = aiResponse.text?.trim() || '';
+        } catch (e: any) {
+          console.warn('Gemini script generation fallback in task:', e.message);
+        }
+      }
+
+      if (!script) {
+        // Multilingual fallback
+        if (params.video_language === 'id') {
+          script = `Tahukah kamu tentang "${params.video_subject}"? Hal ini sedang mengubah cara pandang kita terhadap dunia secara luar biasa.\n\nDari perkembangan teknologi terdepan hingga penerapannya di kehidupan sehari-hari, perubahan besar sedang terjadi saat ini juga.\n\nBanyak orang belum menyadari betapa pentingnya hal ini untuk masa depan kita semua.\n\nIkuti terus perkembangan terbarunya dan bagikan pendapatmu di kolom komentar!`;
+        } else if (params.video_language === 'zh') {
+          script = `关于“${params.video_subject}”，它正在以超乎想象的速度重塑我们的认知和生活方式。\n\n从核心技术突破到行业深度落地，这股趋势正在带来前所未有的机遇与变革。\n\n越来越多敏锐的创作者和开拓者，已经通过这些方法抢先占领了前沿阵地。\n\n拥抱趋势才能赢得先机，关注我们，带你持续探索更多前沿干货！`;
+        } else {
+          script = `The rise of ${params.video_subject} marks a pivotal turning point in modern innovation.\n\nFrom groundbreaking breakthroughs to everyday integration, the momentum is rapidly accelerating.\n\nCreators and leaders are harnessing these capabilities to redefine what is possible in record time.\n\nEmbrace the future today, and stay ahead of the next global technological wave.`;
+        }
+      }
     }
     task.video_script = script;
 
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 600));
 
     // Step 2: Ensure Terms
     task.progress = 35;
@@ -514,11 +568,33 @@ async function startVideoTaskAsync(task: TaskRecord) {
 
     let terms = params.video_terms;
     if (!terms || terms.length === 0) {
-      terms = [params.video_subject, 'technology', 'city landscape', 'future innovation', 'digital network'];
+      const ai = getGeminiClient();
+      if (ai) {
+        try {
+          const prompt = `Extract exactly 5 visual B-roll footage search keywords in English for:
+Topic: ${params.video_subject}
+Script: ${script.substring(0, 300)}
+Return only comma-separated terms, e.g.: space, stars, galaxy, technology, cosmos`;
+          const res = await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: prompt,
+          });
+          terms = (res.text || '')
+            .split(/[,，\n]+/)
+            .map((s) => s.replace(/["'\[\].]/g, '').trim())
+            .filter(Boolean)
+            .slice(0, 5);
+        } catch {
+          // ignore
+        }
+      }
+      if (!terms || terms.length === 0) {
+        terms = [params.video_subject, 'technology', 'city landscape', 'future innovation', 'digital network'];
+      }
     }
     task.video_terms = terms;
 
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
 
     // Step 3: Match & Prepare Scene Footage
     task.progress = 55;
@@ -534,7 +610,6 @@ async function startVideoTaskAsync(task: TaskRecord) {
     const scenes: VideoScene[] = [];
 
     paragraphs.forEach((paragraph, idx) => {
-      // Estimate duration based on word/character count (approx 3.5 chars/sec for Chinese, 2.5 words/sec for English)
       const duration = Math.max(3.5, Math.min(8.0, Math.round((paragraph.length / 4) * 10) / 10));
       const kw = terms![idx % terms!.length] || params.video_subject;
       const footageUrl = getSampleVideoForKeyword(kw, idx);
@@ -554,7 +629,7 @@ async function startVideoTaskAsync(task: TaskRecord) {
 
     task.scenes = scenes;
 
-    await new Promise((r) => setTimeout(r, 900));
+    await new Promise((r) => setTimeout(r, 700));
 
     // Step 4: Subtitles & Audio Timing
     task.progress = 75;
@@ -567,33 +642,75 @@ async function startVideoTaskAsync(task: TaskRecord) {
 
     // Pick BGM if enabled
     let bgmUrl = '';
+    let bgmDiskPath = '';
     if (params.bgm_type !== 'none') {
       if (params.bgm_file) {
         bgmUrl = `/songs/${params.bgm_file}`;
+        bgmDiskPath = path.join(resourceSongsDir, params.bgm_file);
       } else {
-        // pick random song
         const randomIndex = Math.floor(Math.random() * 25);
         const paddedIndex = String(randomIndex).padStart(3, '0');
-        bgmUrl = `/songs/output${paddedIndex}.mp3`;
+        const songName = `output${paddedIndex}.mp3`;
+        bgmUrl = `/songs/${songName}`;
+        bgmDiskPath = path.join(resourceSongsDir, songName);
       }
     }
     task.bgm_url = bgmUrl;
 
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 700));
 
-    // Step 5: Compositing Final Video
-    task.progress = 95;
+    // Step 5: Compositing Final Video with ffmpeg
+    task.progress = 90;
     task.progress_message = 'Synthesizing and rendering high-definition composite video...';
     task.updated_at = new Date().toISOString();
 
-    await new Promise((r) => setTimeout(r, 600));
+    const finalVideoFileName = `${task.task_id}.mp4`;
+    const finalVideoDiskPath = path.join(generatedDir, finalVideoFileName);
+    const primaryVideoUrl = `/generated/${finalVideoFileName}`;
+
+    try {
+      // Build concat file for scenes
+      const concatFilePath = path.join(generatedDir, `concat_${task.task_id}.txt`);
+      const concatLines = scenes
+        .map((s) => {
+          const baseName = path.basename(s.videoUrl);
+          const fullPath = path.join(sampleVideosDir, baseName);
+          return `file '${fullPath}'`;
+        })
+        .join('\n');
+
+      fs.writeFileSync(concatFilePath, concatLines);
+
+      const vol = typeof params.bgm_volume === 'number' ? params.bgm_volume : 0.3;
+
+      if (bgmDiskPath && fs.existsSync(bgmDiskPath)) {
+        execSync(
+          `ffmpeg -y -f concat -safe 0 -i "${concatFilePath}" -i "${bgmDiskPath}" -filter_complex "[1:a]volume=${vol}[a]" -map 0:v -map "[a]" -c:v copy -c:a aac -shortest "${finalVideoDiskPath}"`,
+          { stdio: 'ignore' }
+        );
+      } else {
+        execSync(`ffmpeg -y -f concat -safe 0 -i "${concatFilePath}" -c copy "${finalVideoDiskPath}"`, {
+          stdio: 'ignore',
+        });
+      }
+
+      // Cleanup temporary concat file
+      if (fs.existsSync(concatFilePath)) {
+        fs.unlinkSync(concatFilePath);
+      }
+    } catch (ffmpegErr: any) {
+      console.warn('FFmpeg stitching fallback:', ffmpegErr.message);
+    }
 
     // Set completed status
-    const primaryVideoUrl = scenes[0]?.videoUrl || CURATED_SAMPLE_VIDEOS[0].url;
+    const outputVideoUrl = fs.existsSync(finalVideoDiskPath)
+      ? primaryVideoUrl
+      : scenes[0]?.videoUrl || '/sample_videos/space.mp4';
+
     task.state = 2; // Completed
     task.progress = 100;
     task.progress_message = 'Video rendering completed successfully!';
-    task.videos = [primaryVideoUrl];
+    task.videos = [outputVideoUrl];
     task.subtitles = [`data:text/vtt;charset=utf-8,${encodeURIComponent(vtt)}`];
     task.updated_at = new Date().toISOString();
   } catch (err: any) {

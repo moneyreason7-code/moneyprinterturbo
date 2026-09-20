@@ -21,12 +21,13 @@ interface VoiceSubtitlePanelProps {
 }
 
 const VOICES = [
+  { id: 'id-ID-GadisNeural', name: 'Gadis (Ramah & Hangat · Indonesia)', lang: 'id' },
+  { id: 'id-ID-ArdiNeural', name: 'Ardi (Jelas & Naratif · Indonesia)', lang: 'id' },
+  { id: 'en-US-JennyNeural', name: 'Jenny (Professional Warm · English)', lang: 'en' },
+  { id: 'en-US-GuyNeural', name: 'Guy (Deep Documentary · English)', lang: 'en' },
   { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓 (自然亲切女声 · 中文)', lang: 'zh' },
   { id: 'zh-CN-YunxiNeural', name: '云希 (沉稳有声男声 · 中文)', lang: 'zh' },
   { id: 'zh-CN-YunjianNeural', name: '云健 (影视解说男声 · 中文)', lang: 'zh' },
-  { id: 'en-US-JennyNeural', name: 'Jenny (Professional Warm · English)', lang: 'en' },
-  { id: 'en-US-GuyNeural', name: 'Guy (Deep Documentary · English)', lang: 'en' },
-  { id: 'en-US-AriaNeural', name: 'Aria (Dynamic Commercial · English)', lang: 'en' },
   { id: 'ja-JP-NanamiNeural', name: 'Nanami (七海 · Japanese)', lang: 'ja' },
 ];
 

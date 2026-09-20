@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Locale, i18n } from './i18n';
 import { TaskRecord, TaskVideoRequest } from './types';
 import { Header } from './components/Header';
@@ -8,19 +8,24 @@ import { VoiceSubtitlePanel } from './components/VoiceSubtitlePanel';
 import { BgmPanel } from './components/BgmPanel';
 import { TaskListPanel } from './components/TaskListPanel';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
-import { Sparkles, ArrowRight, Video } from 'lucide-react';
+import { Sparkles, ArrowRight, Video, CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+
+interface ToastState {
+  type: 'info' | 'success' | 'error';
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
 
 export default function App() {
-  const [locale, setLocale] = useState<Locale>('zh');
+  const [locale, setLocale] = useState<Locale>('id');
   const t = i18n[locale];
 
   // Script State
-  const [subject, setSubject] = useState(
-    locale === 'zh' ? '人工智能如何改变日常生活' : 'How AI is changing everyday life'
-  );
+  const [subject, setSubject] = useState('Misteri Segitiga Bermuda dan Rahasianya');
   const [script, setScript] = useState('');
   const [terms, setTerms] = useState<string[]>([]);
-  const [scriptLanguage, setScriptLanguage] = useState(locale === 'zh' ? 'zh' : 'en');
+  const [scriptLanguage, setScriptLanguage] = useState('id');
   const [paragraphCount, setParagraphCount] = useState(4);
   const [customPrompt, setCustomPrompt] = useState('');
 
@@ -30,7 +35,7 @@ export default function App() {
   const [transition, setTransition] = useState<'none' | 'fade' | 'slide' | 'zoom'>('fade');
 
   // Voice & Subtitle State
-  const [voice, setVoice] = useState('zh-CN-XiaoxiaoNeural');
+  const [voice, setVoice] = useState('id-ID-GadisNeural');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
   const [subtitleEnabled, setSubtitleEnabled] = useState(true);
   const [fontSize, setFontSize] = useState(22);
@@ -47,11 +52,26 @@ export default function App() {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeModalTask, setActiveModalTask] = useState<TaskRecord | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const prevTasksRef = useRef<TaskRecord[]>([]);
 
   // Synchronize language selection with locale
   useEffect(() => {
-    setScriptLanguage(locale === 'zh' ? 'zh' : 'en');
-    setVoice(locale === 'zh' ? 'zh-CN-XiaoxiaoNeural' : 'en-US-JennyNeural');
+    if (locale === 'id') {
+      setScriptLanguage('id');
+      setVoice('id-ID-GadisNeural');
+      if (subject.includes('AI') || subject.includes('人工智能')) {
+        setSubject('Misteri Segitiga Bermuda dan Rahasianya');
+      }
+    } else if (locale === 'zh') {
+      setScriptLanguage('zh');
+      setVoice('zh-CN-XiaoxiaoNeural');
+      setSubject('人工智能如何改变日常生活');
+    } else {
+      setScriptLanguage('en');
+      setVoice('en-US-JennyNeural');
+      setSubject('How AI is changing everyday life');
+    }
   }, [locale]);
 
   // Fetch Tasks
@@ -60,10 +80,32 @@ export default function App() {
       const res = await fetch('/api/v1/tasks');
       const data = await res.json();
       if (data.data?.tasks) {
-        setTasks(data.data.tasks);
+        const newTasks: TaskRecord[] = data.data.tasks;
+        
+        // Detect if a task just finished
+        if (prevTasksRef.current.length > 0) {
+          newTasks.forEach((nt) => {
+            const prev = prevTasksRef.current.find((pt) => pt.task_id === nt.task_id);
+            if (prev && (prev.state === 0 || prev.state === 1) && nt.state === 2) {
+              setToast({
+                type: 'success',
+                message: locale === 'id' 
+                  ? `Video "${nt.params.video_subject || 'Video'}" selesai dirender!` 
+                  : locale === 'zh'
+                  ? `视频 "${nt.params.video_subject || 'Video'}" 已成功合成！`
+                  : `Video "${nt.params.video_subject || 'Video'}" finished rendering!`,
+                actionLabel: t.viewVideo,
+                onAction: () => setActiveModalTask(nt),
+              });
+            }
+          });
+        }
+        prevTasksRef.current = newTasks;
+        setTasks(newTasks);
+
         // If an open modal task was updated in background, keep it in sync
         if (activeModalTask) {
-          const updated = data.data.tasks.find((tk: TaskRecord) => tk.task_id === activeModalTask.task_id);
+          const updated = newTasks.find((tk: TaskRecord) => tk.task_id === activeModalTask.task_id);
           if (updated) {
             setActiveModalTask(updated);
           }
@@ -93,14 +135,31 @@ export default function App() {
   // Handle Video Generation Submission
   const handleStartGenerate = async () => {
     if (!subject.trim() && !script.trim()) {
-      alert(locale === 'zh' ? '请先输入视频主题或文案脚本' : 'Please provide a video subject or script first');
+      setToast({
+        type: 'error',
+        message: locale === 'id' 
+          ? 'Silakan masukkan topik video atau naskah terlebih dahulu.' 
+          : locale === 'zh' 
+          ? '请先输入视频主题或文案脚本' 
+          : 'Please provide a video subject or script first',
+      });
       return;
     }
 
     setIsSubmitting(true);
+    setToast({
+      type: 'info',
+      message: locale === 'id'
+        ? 'Memulai sintesis video AI... Script, footage, dan audio sedang diproses.'
+        : locale === 'zh'
+        ? '已启动视频合成任务，正在处理文案、素材与音频...'
+        : 'Video synthesis started! Processing script, footage, and audio track...',
+    });
+
     const payload: TaskVideoRequest = {
       video_subject: subject,
       video_script: script,
+      video_script_prompt: customPrompt,
       video_terms: terms,
       video_language: scriptLanguage,
       video_aspect: aspect,
@@ -128,14 +187,16 @@ export default function App() {
       const data = await res.json();
       if (data.data?.task_id) {
         await fetchTasks();
-        // Smooth scroll to task manager
         const taskSection = document.getElementById('task-list-section');
         taskSection?.scrollIntoView({ behavior: 'smooth' });
       } else {
         throw new Error(data.message || 'Failed to start video synthesis');
       }
     } catch (err: any) {
-      alert(err.message || 'Error creating task');
+      setToast({
+        type: 'error',
+        message: err.message || 'Error creating task',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -165,6 +226,49 @@ export default function App() {
       />
 
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Real-time Notification Banner */}
+        {toast && (
+          <div
+            className={`rounded-xl p-4 flex items-center justify-between gap-3 shadow-xs border transition-all ${
+              toast.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : toast.type === 'error'
+                ? 'bg-rose-50 border-rose-200 text-rose-900'
+                : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {toast.type === 'success' ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              ) : toast.type === 'error' ? (
+                <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+              ) : (
+                <Info className="h-5 w-5 text-indigo-600 shrink-0 animate-pulse" />
+              )}
+              <span className="text-sm font-medium">{toast.message}</span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {toast.actionLabel && toast.onAction && (
+                <button
+                  type="button"
+                  onClick={toast.onAction}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-all shadow-xs"
+                >
+                  {toast.actionLabel}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="rounded-lg p-1 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Info Banner */}
         <div className="rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-violet-900 p-6 text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>

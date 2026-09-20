@@ -153,8 +153,9 @@ export const ScriptPanel: React.FC<ScriptPanelProps> = ({
             onChange={(e) => setLanguage(e.target.value)}
             className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-hidden"
           >
-            <option value="zh">简体中文 (Chinese)</option>
+            <option value="id">Bahasa Indonesia</option>
             <option value="en">English (US)</option>
+            <option value="zh">简体中文 (Chinese)</option>
             <option value="ja">日本語 (Japanese)</option>
             <option value="es">Español (Spanish)</option>
             <option value="fr">Français (French)</option>
